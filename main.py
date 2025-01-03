@@ -74,7 +74,7 @@ def fetch_orders(account, code):
         "SLL_BUY_DVSN_CD": 00,
         "INQR_DVSN": 00,
         "PDN0": code,
-        "CCLD_DVSN": "02",
+        "CCLD_DVSN": "02",  # 미체결
         "ORD_GNO_BRNO": "",
         "ODNO": "",
         "INQR_DVSN_3": 00,
@@ -89,6 +89,36 @@ def fetch_orders(account, code):
     except Exception as e:
         print(e)
         return []
+
+# 주문 취소 함수
+def cancel_order(account, order_no):
+    url = f"{BASE_URL}/uapi/domestic-stock/v1/trading/order-rvsecncl"
+    headers = {
+        "content-type": "application/json; charset=utf-8",
+        "authorization": f"Bearer {ACCESS_TOKEN}",
+        "appkey": APPKEY,
+        "appsecret": APPSECRET,
+        "tr_id": "VTTC0803U"
+    }
+    body = {
+        "CANO": account[:8],
+        "ACNT_PRDT_CD": account[-2:],
+        "KRX_FWDG_ORD_ORDNO": "",
+        "ORGN_ODNO": order_no,
+        "ORD_DVSN": "00",
+        "RVSE_CNCL_DVSN_CD": "02",  # 취소
+        "ORD_QTY": "0",  # 잔량전부 취소
+        "ORD_UNPR": "0",  # 취소
+        "QTY_ALL_ORD_YN": "Y",  # 잔량 전부
+    }
+    try:
+        res = requests.post(url, headers=headers, json=body)
+        data = res.json()
+        return data["rt_cd"] == "0"     # 성공 실패 여부
+    except Exception as e:
+        print(e)
+        return False
+
 # 자동 매매 코드
 
 prices = []
