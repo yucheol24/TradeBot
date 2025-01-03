@@ -2,8 +2,7 @@ from time import sleep
 import requests
 from dotenv import load_dotenv
 import os
-
-from api_test import ACCESS_TOKEN
+from datetime import datetime
 
 load_dotenv()
 
@@ -57,6 +56,39 @@ def fetch_current_price(code):
         print(e)
         return None
 
+# 주문 체결 조회 함수
+def fetch_orders(account, code):
+    today = datetime.today().strftime('%Y%m%d')
+    url = f"{BASE_URL}/uapi/domestic-stock/v1/trading/inquire-daily-ccld"
+    headers = {
+        "authorization": f"Bearer {ACCESS_TOKEN}",
+        "appkey": {APPKEY},
+        "appsecret": {APPSECRET},
+        "tr_id": "VTTC8001R"
+    }
+    params = {
+        "CANO": account[:8],
+        "ACNT_PRDT_CD": account[-2:],
+        "INQR_STRT_DT": today,
+        "INQR_END_DT": today,
+        "SLL_BUY_DVSN_CD": 00,
+        "INQR_DVSN": 00,
+        "PDN0": code,
+        "CCLD_DVSN": "02",
+        "ORD_GNO_BRNO": "",
+        "ODNO": "",
+        "INQR_DVSN_3": 00,
+        "INQR_DVSN_1": "",
+        "CTX_AREA_FK100": "",
+        "CTX_AREA_NK100": ""
+    }
+    try:
+        res = requests.get(url, headers=headers, params=params)
+        data = res.json()
+        return data["output1"]
+    except Exception as e:
+        print(e)
+        return []
 # 자동 매매 코드
 
 prices = []
