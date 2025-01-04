@@ -1,4 +1,6 @@
 import json
+import indicator
+import strategy
 
 def load_prices(filename):
     data = {}
@@ -12,30 +14,6 @@ def load_prices(filename):
 
     return result
 
-# 이동 평균선 계산하는 함수
-def ma(values, size):
-    if len(values) >= size:
-        target_values = values[-size:]
-        return sum(target_values) / size
-    else:
-        return None
-
-# 매도 신호 반환하는 함수
-def ma_signal(ma_short_term, ma_long_term):
-    if len(ma_short_term) < 2 or len(ma_long_term) < 2:
-        return None
-    if None in ma_short_term[-2:] or None in ma_long_term[-2:]:
-        return None
-    prev = ma_short_term[-2] - ma_long_term[-2]
-    current = ma_short_term[-1] - ma_long_term[-1]
-
-    if prev < 0 and current >= 0:
-        return "BUY"
-    elif prev >= 0 and current < 0:
-        return "SELL"
-    else:
-        return None
-
 # 백테스트
 def backtest(prices, initial_balance):
     balance = initial_balance   # 초기 잔고
@@ -44,9 +22,9 @@ def backtest(prices, initial_balance):
     ma60 = []
 
     for i in range(len(prices)):
-        ma20.append(ma(prices[:i+1], 20))
-        ma60.append(ma(prices[:i+1], 60))
-        signal = ma_signal(ma20, ma60)
+        ma20.append(indicator.ma(prices[:i+1], 20))
+        ma60.append(indicator.ma(prices[:i+1], 60))
+        signal = strategy.ma_signal(ma20, ma60)
 
         if signal == "BUY":
             amount = balance // prices[i]
