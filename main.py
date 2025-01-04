@@ -186,6 +186,32 @@ def fetch_quantity(account, code):
         print(e)
         return 0
 
+# 매수 또는 매도 주문 기능 추가
+def order(order_type, account, code, amount, target_price):
+    url = f"{BASE_URL}/uapi/domestic-stock/v1/trading/order-cash"
+    headers = {
+        "content-type": "application/json; charset=utf-8",
+        "authorization": f"Bearer {ACCESS_TOKEN}",
+        "appkey": APPKEY,
+        "appsecret": APPSECRET,
+        "tr_id": "VTTC0802U" if order_type == "BUY" else "VTTC0801U"  # 주식 현금 매수/매도 주문
+    }
+    body = {
+        "CANO": account[:8],
+        "ACNT_PRDT_CD": account[-2:],
+        "PDNO": code,
+        "ORD_DVSN": "00",  # 지정가
+        "ORD_QTY": str(amount),
+        "ORD_UNPR": str(target_price)
+    }
+    try:
+        res = requests.post(url, headers=headers, json=body)
+        data = res.json()
+        return data["rt_cd"] == "0"
+    except Exception as e:
+        print(e)
+        return False
+
 # 자동 매매 코드
 
 prices = []
