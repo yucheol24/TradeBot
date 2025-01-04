@@ -119,12 +119,39 @@ def cancel_order(account, order_no):
         print(e)
         return False
 
+# 미체결 된 주식 취소 함수
 def clear_order(account, code):
     orders = fetch_orders(account, code)
     for order in orders:
         order_no = order["odno"]
         result = cancel_order(account, order_no)
         print(f"{order_no} 취소 성공" if result else f"{order_no} 취소 실패")
+
+# 매수 가능한 주식을 조회하는 함수
+def fetch_avail(account, code, target_price):
+    url = f"{BASE_URL}/uapi/domestic-stock/v1/trading/inquire-psbl-order"
+    headers = {
+        "authorization": f"Bearer {ACCESS_TOKEN}",
+        "appkey": APPKEY,
+        "appsecret": APPSECRET,
+        "tr_id": "VTTC8908R"
+    }
+    params = {
+        "CANO": account[:8],
+        "ACNT_PRDT_CD": account[-2:],
+        "PDNO": code,
+        "ORD_UNPR": str(target_price),
+        "ORD_DVSN": "00",  # 지정가
+        "CMA_EVLU_AMT_ICLD_YN": "N",
+        "OVRS_ICLD_YN": "N",
+    }
+    try:
+        res = requests.get(url, headers=headers, params=params)
+        data = res.json()
+        return int(data["output"]["nrcvb_buy_qty"]) # 미수 없는 매수 가능 수량
+    except Exception as e:
+        print(e)
+        return 0
 
 # 자동 매매 코드
 
