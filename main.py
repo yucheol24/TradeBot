@@ -13,7 +13,7 @@ ACCESS_TOKEN = os.environ["ACCESS_TOKEN"]
 
 # 자동 매매를 할 주식 종목 코드를 정해두고 쓰려고 변수에 저장
 CODE = "005930"     # 삼성전자
-
+ACCOUNT = os.environ["ACCOUNT"]     # 국내주식 계좌
 # 이전 backtest.py, api_test.py에서 작성했던 함수들 추가
 def ma(values, window_size):
     if len(values) >= window_size:
@@ -119,6 +119,13 @@ def cancel_order(account, order_no):
         print(e)
         return False
 
+def clear_order(account, code):
+    orders = fetch_orders(account, code)
+    for order in orders:
+        order_no = order["odno"]
+        result = cancel_order(account, order_no)
+        print(f"{order_no} 취소 성공" if result else f"{order_no} 취소 실패")
+
 # 자동 매매 코드
 
 prices = []
@@ -138,6 +145,7 @@ while True:
         signal = ma_signal(ma20, ma60)
         print(f"가격: {prices[-1]} MA20: {ma20[-1]} MA60: {ma60[-1]} 신호: {signal}")
         # 과거 주문을 조회하고 미체결된 주문이 있으면 취소하기
+        clear_order(ACCOUNT, CODE)
         # 매수 주문 가능한 수량 조회하기
         # 보유 수량 업데이트하기
     # 전략에 따라 주문하기
