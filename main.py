@@ -153,6 +153,39 @@ def fetch_avail(account, code, target_price):
         print(e)
         return 0
 
+# 주식 보유 수량 조회 함수
+def fetch_quantity(account, code):
+    url = f"{BASE_URL}/uapi/domestic-stock/v1/trading/inquire-psbl-order"
+    headers = {
+        "authorization": f"Bearer {ACCESS_TOKEN}",
+        "appkey": APPKEY,
+        "appsecret": APPSECRET,
+        "tr_id": "VTTC8908R"
+    }
+    params = {
+        "CANO": account[:8],
+        "ACNT_PRDT_CD": account[-2:],
+        "AFHR_FLPR_YN": "N",
+        "OFL_YN": "",
+        "INQR_DVSN": "02",
+        "UNPR_DVSN": "01",
+        "FUND_STTL_ICLD_YN": "N",
+        "FNCG_AMT_AUTO_RDPT_YN": "N",
+        "PRCS_DVSN": "00",
+        "CTX_AREA_FK100": "",
+        "CTX_AREA_NK100": ""
+    }
+    try:
+        res = requests.get(url, headers=headers, params=params)
+        data = res.json()
+        for item in data["output1"]:
+            if item["pdno"] == code:
+                return int(item("hldg_qty"))
+        return 0
+    except Exception as e:
+        print(e)
+        return 0
+
 # 자동 매매 코드
 
 prices = []
@@ -174,6 +207,7 @@ while True:
         # 과거 주문을 조회하고 미체결된 주문이 있으면 취소하기
         clear_order(ACCOUNT, CODE)
         # 매수 주문 가능한 수량 조회하기
+        fetch_avail(ACCOUNT, CODE, 50000)
         # 보유 수량 업데이트하기
     # 전략에 따라 주문하기
     sleep(60)
