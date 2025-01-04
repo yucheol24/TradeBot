@@ -1,8 +1,16 @@
+from email.utils import make_msgid
 from time import sleep
 import requests
 from dotenv import load_dotenv
 import os
 from datetime import datetime
+
+# 이 코드는 모의 주식에서 쓰기위해 만들어졌습니다.
+# 실제 거래소에서 자동 매매를 원하시면 BASE_URL을 실전 Domain 주소로 바꾸고
+# 거래 ID인 tr_id 값을 [실전투자] 값으로 바꿔야 합니다. (한국 투자 증권 API 참고)
+# 이 코드는 1분마다 현재가를 받아오기 때문에, 주식 정규장이 열려 있을 때만 제대로 동작합니다.
+# 자신의 APPKEY, APPSECRET 키를 넣어야 정상 작동 됨
+# 만약 잘 작동되지 않는다면 ACCESS_TOKEN 값을 다시 불러와서 사용하면 됩니다.
 
 load_dotenv()
 
@@ -62,8 +70,8 @@ def fetch_orders(account, code):
     url = f"{BASE_URL}/uapi/domestic-stock/v1/trading/inquire-daily-ccld"
     headers = {
         "authorization": f"Bearer {ACCESS_TOKEN}",
-        "appkey": {APPKEY},
-        "appsecret": {APPSECRET},
+        "appkey": APPKEY,
+        "appsecret": APPSECRET,
         "tr_id": "VTTC8001R"
     }
     params = {
@@ -71,9 +79,9 @@ def fetch_orders(account, code):
         "ACNT_PRDT_CD": account[-2:],
         "INQR_STRT_DT": today,
         "INQR_END_DT": today,
-        "SLL_BUY_DVSN_CD": 00,
-        "INQR_DVSN": 00,
-        "PDN0": code,
+        "SLL_BUY_DVSN_CD": "00",
+        "INQR_DVSN": "00",
+        "PDNO": code,
         "CCLD_DVSN": "02",  # 미체결
         "ORD_GNO_BRNO": "",
         "ODNO": "",
@@ -180,7 +188,7 @@ def fetch_quantity(account, code):
         data = res.json()
         for item in data["output1"]:
             if item["pdno"] == code:
-                return int(item("hldg_qty"))
+                return item["hldg_qty"]
         return 0
     except Exception as e:
         print(e)
@@ -212,6 +220,36 @@ def order(order_type, account, code, amount, target_price):
         print(e)
         return False
 
+# 총 평가금을 알려주는 함수
+def fetch_eval(account):
+    url = f"{BASE_URL}/uapi/domestic-stock/v1/trading/inquire-balance"
+    headers = {
+        "authorization": f"Bearer {ACCESS_TOKEN}",
+        "appkey": APPKEY,
+        "appsecret": APPSECRET,
+        "tr_id": "VTTC8434R"  # 주식 잔고 조회
+    }
+    params = {
+        "CANO": account[:8],
+        "ACNT_PRDT_CD": account[-2:],
+        "AFHR_FLPR_YN": "N",
+        "OFL_YN": "", # 공란
+        "INQR_DVSN": "02",  # 종목별
+        "UNPR_DVSN": "01",  # 단가 구분 기본값
+        "FUND_STTL_ICLD_YN": "N",
+        "FNCG_AMT_AUTO_RDPT_YN": "N",
+        "PRCS_DVSN": "00",  # 전일 매매 포함
+        "CTX_AREA_FK100": "",
+        "CTX_AREA_NK100": ""
+    }
+    try:
+        res = requests.get(url, headers=headers, params=params)
+        data = res.json()
+        return data["output2"][0]["tot_evlu_amt"]
+    except Exception as e:
+        print(e)
+        return None
+
 # 자동 매매 코드
 
 prices = []
@@ -231,9 +269,22 @@ while True:
         signal = ma_signal(ma20, ma60)
         print(f"가격: {prices[-1]} MA20: {ma20[-1]} MA60: {ma60[-1]} 신호: {signal}")
         # 과거 주문을 조회하고 미체결된 주문이 있으면 취소하기
+        sleep(0.2)
         clear_order(ACCOUNT, CODE)
-        # 매수 주문 가능한 수량 조회하기
-        fetch_avail(ACCOUNT, CODE, 50000)
-        # 보유 수량 업데이트하기
-    # 전략에 따라 주문하기
+        # 전략에 따라 주문하기
+        amount = 0
+        if signal == "BUY":
+            # 매수 가능한 수량 조회하기
+            amount = fetch_avail(ACCOUNT, CODE, prices[-1])
+        elif signal == "SELL":
+            # 보유 수량 업데이트하기
+            amount = fetch_quantity(ACCOUNT, CODE)
+        if amount > 0:
+            sleep(0.2)
+            result = order(signal, ACCOUNT, CODE, amount, prices[-1])
+            if result:
+                print(f"{signal} {CODE} {amount}개 {prices[-1]}원 주문 성공")
+    sleep(0.2)  # 오류를 줄이기 위한 딜레이
+    eval = fetch_eval(ACCOUNT)
+    print(f"총 평가금: {eval}")
     sleep(60)
